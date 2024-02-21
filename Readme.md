@@ -1,7 +1,7 @@
 # Проект «Большое путешествие»
 
 * Студент: [Алексей Виноградов](https://up.htmlacademy.ru/ecmascript/22/user/1757385).
-* Наставник: [Обиван Кенобин].
+* Наставник: [Обиван Кенобин](https://pikabu.ru/story/obivan_kenobi_vyimyishlennaya_i_realnaya_istorii_pechalnogo_dzhedaya_9144226).
 
 ---
 
