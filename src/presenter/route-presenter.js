@@ -6,6 +6,8 @@ import TripInfoView from '../view/trip-info-view';
 import NoEventsView from '../view/no-events-views';
 import { RenderPosition, render } from '../framework/render';
 import EventPresenter, { EventMode } from './event-presenter';
+import { SortType } from '../utils/const';
+import { sortByDefault, sortByTime, sortByPrice } from '../utils/event';
 
 export default class RoutePresenter {
   #container = null;
@@ -14,6 +16,9 @@ export default class RoutePresenter {
   #filterContainer = null;
   #eventsListView = null;
   #eventPresenters = new Map();
+  #currentSortType = SortType.DEFAULT;
+  #defaultSortedEvents = null;
+  #events = null;
 
   constructor({container, eventsModel}) {
     this.#container = container;
@@ -23,6 +28,9 @@ export default class RoutePresenter {
   }
 
   init() {
+    this.#defaultSortedEvents = this.#eventsModel.events.slice().sort(sortByDefault);
+    this.#events = [...this.#defaultSortedEvents];
+
     this.#render();
   }
 
@@ -45,7 +53,7 @@ export default class RoutePresenter {
   }
 
   #renderSortEvents() {
-    render(new SortEventsView(), this.#eventsContainer);
+    render(new SortEventsView({ onSortTypeChanged: this.#handleSortTypeChanged }), this.#eventsContainer);
   }
 
   #renderEventsList() {
@@ -54,16 +62,14 @@ export default class RoutePresenter {
   }
 
   #renderEvents() {
-    const events = this.#eventsModel.events;
-
-    if (events.length === 0) {
+    if (this.#events.length === 0) {
       render(new NoEventsView(), this.#eventsContainer);
       return;
     }
 
     this.#eventsListView = this.#eventsListView ?? new EventsListView();
 
-    for(const event of events) {
+    for(const event of this.#events) {
       this.#renderEvent(event);
     }
   }
@@ -96,5 +102,26 @@ export default class RoutePresenter {
 
   #handleEventModeChange = () => {
     this.#eventPresenters.forEach((presenter) => presenter.mode !== EventMode.DEFAULT && presenter.resetView());
+  };
+
+  #handleSortTypeChanged = (sortType) => {
+    if (this.#currentSortType === sortType) {
+      return;
+    }
+
+    switch (sortType) {
+      case SortType.TIME:
+        this.#events.sort(sortByTime);
+        break;
+      case SortType.PRICE:
+        this.#events.sort(sortByPrice);
+        break;
+      default:
+        this.#events = [...this.#defaultSortedEvents];
+    }
+
+    this.#currentSortType = sortType;
+    this.#clearEventsList();
+    this.#renderEvents();
   };
 }
