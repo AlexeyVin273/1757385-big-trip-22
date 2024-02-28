@@ -21,4 +21,15 @@ const isPresentEvent = (event) => dayjs().isBefore(dayjs(event.toDate)) && dayjs
 */
 const isPastEvent = (event) => dayjs().isAfter(dayjs(event.toDate));
 
-export { isFutureEvent, isPresentEvent, isPastEvent };
+const sortByDefault = (eventA, eventB) => dayjs(eventA.dateFrom).diff(dayjs(eventB.dateFrom));
+
+const sortByTime = (eventA, eventB) => {
+  const durationA = dayjs(eventA.dateTo).diff(dayjs(eventA.dateFrom));
+  const durationB = dayjs(eventB.dateTo).diff(dayjs(eventB.dateFrom));
+
+  return durationA - durationB;
+};
+
+const sortByPrice = (eventA, eventB) => eventA.basePrice - eventB.basePrice;
+
+export { isFutureEvent, isPresentEvent, isPastEvent, sortByDefault, sortByTime, sortByPrice };
