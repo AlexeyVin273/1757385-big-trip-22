@@ -1,7 +1,8 @@
-import AbstractView from '../framework/view/abstract-view';
+import AbstractStatefulView from '../framework/view/abstract-stateful-view';
 import { EventTypes } from '../mock/mockEventTypes';
 import { getCalendarDateTime } from '../utils/common';
-import { getDestinationById } from '../mock/mockDestination';
+import { getDestinationById, getDestinations, getDestinationId } from '../mock/mockDestination';
+import { getOfferById } from '../mock/mockOffers';
 
 const createTypesList = (checkedType, eventId) => Object.entries(EventTypes).map(([key, value]) => {
   const { id: typeId, title } = value;
@@ -13,20 +14,30 @@ const createTypesList = (checkedType, eventId) => Object.entries(EventTypes).map
     </div>`);
 }).join('');
 
-const createOffersList = (offers, checkedOffers, eventId) => offers.map((offer) => {
-  const { id: offerId, title, price } = offer;
-  const checked = checkedOffers.has(offerId) ? 'checked' : '';
-  return (`
-    <div class="event__offer-selector">
-      <input class="event__offer-checkbox  visually-hidden" id="event-offer-${offerId}-${eventId}" type="checkbox" name="event-offer-${title}" ${checked}>
-      <label class="event__offer-label" for="event-offer-${offerId}-${eventId}">
-        <span class="event__offer-title">${title}</span>
-        &plus;&euro;&nbsp;
-        <span class="event__offer-price">${price}</span>
-      </label>
-    </div>
-  `);
-}).join('');
+const createOffersList = (offers, checkedOffers, eventId) => {
+  const offersList = offers.map((offer) => {
+    const { id: offerId, title, price } = offer;
+    const checked = checkedOffers.has(offerId) ? 'checked' : '';
+    return (`
+      <div class="event__offer-selector">
+        <input class="event__offer-checkbox  visually-hidden" id="event-offer-${offerId}-${eventId}" type="checkbox" name="event-offer-${offerId}-${eventId}" ${checked} data-offer-id=${offerId}>
+        <label class="event__offer-label" for="event-offer-${offerId}-${eventId}">
+          <span class="event__offer-title">${title}</span>
+          &plus;&euro;&nbsp;
+          <span class="event__offer-price">${price}</span>
+        </label>
+      </div>
+    `);
+  }).join('');
+
+  return offersList.length ? `
+  <section class="event__section  event__section--offers">
+    <h3 class="event__section-title  event__section-title--offers">Offers</h3>
+
+    <div class="event__available-offers">${offersList}</div>
+  </section>
+  ` : '';
+};
 
 const createDates = (dateFrom, dateTo, eventId) =>
   `<div class="event__field-group  event__field-group--time">
@@ -40,27 +51,50 @@ const createDates = (dateFrom, dateTo, eventId) =>
 
 const createDestinations = (destinations, chosenDestination, chosenTypeTitle, eventId) =>
   `<div class="event__field-group  event__field-group--destination">
-    <label class="event__label  event__type-output" for="event-destination-${eventId}">
+    <label class="event__label event__type-output" for="event-destination-${eventId}">
       ${chosenTypeTitle}
     </label>
-    <input class="event__input  event__input--destination" id="event-destination-${eventId}" type="text" name="event-destination" value="${chosenDestination}" list="destination-list-1">
+    <input class="event__input event__input--destination" id="event-destination-${eventId}" type="text" name="event-destination" value="${chosenDestination}" list="destination-list-1">
     <datalist id="destination-list-1">
       ${destinations.map((destination) => `<option value=${destination.name}></option>`).join('')}
     </datalist>
   </div>`;
 
-const createEditEventTemplate = ({ destinations, offers, event }) => {
-  const { id: eventId, type: eventType, dateFrom, dateTo, basePrice, offers: eventOffers } = event;
-  const { icon: typeIcon, title: typeTitle } = EventTypes[eventType] ?? {};
-  const { name: destinationName, description } = getDestinationById(event.destination) || {};
+const createDescription = ({description, pictures}) => {
+  const picturesList = pictures.map((picture) => `<img class="event__photo" src="${picture.src}" alt="${picture.description}">`).join('');
+  const picturesNode = picturesList.length && `
+    <div class="event__photos-container">
+      <div class="event__photos-tape">
+        ${picturesList}
+      </div>
+    </div>`;
+
+  return (
+    `<section class="event__section  event__section--destination">
+      <h3 class="event__section-title  event__section-title--destination">Destination</h3>
+      <p class="event__destination-description">${description}</p>
+      ${picturesNode}
+    </section>`
+  );
+};
+
+const isSubmitDisabled = (data) => {
+  const { destination, type, offers, offersList, destinationId, typeId } = data;
+  return destinationId === destination && typeId === type && offersList.length === offers.length && offers.every((value) => offersList.includes(value));
+};
+
+const createEditEventTemplate = (data) => {
+  const { id: eventId, type: eventType, dateFrom, dateTo, basePrice, offers: eventOffers } = data;
+  const { icon: typeIcon, title: typeTitle, offers: offersIds } = EventTypes[eventType] ?? {};
+  const { name: destinationName, description, pictures } = getDestinationById(data.destination) || {};
+  const offers = offersIds.map((offerId) => getOfferById(offerId));
+  const destinations = getDestinations();
 
   const typesList = createTypesList(eventType, eventId);
-
   const destinationsNode = createDestinations(destinations, destinationName, typeTitle, eventId);
-
   const dates = createDates(dateFrom, dateTo, eventId);
-
-  const offersList = createOffersList(offers, new Set(eventOffers), eventId);
+  const offersNode = createOffersList(offers, new Set(eventOffers), eventId);
+  const descriptionNode = createDescription({description, pictures});
 
   return (
     `<li class="trip-events__item">
@@ -93,54 +127,56 @@ const createEditEventTemplate = ({ destinations, offers, event }) => {
             <input class="event__input  event__input--price" id="event-price-${eventId}" type="text" name="event-price" value="${basePrice}">
           </div>
 
-          <button class="event__save-btn  btn  btn--blue" type="submit">Save</button>
+          <button class="event__save-btn  btn  btn--blue" type="submit" ${isSubmitDisabled(data) ? 'disabled' : ''}>Save</button>
           <button class="event__reset-btn" type="reset">Delete</button>
           <button class="event__rollup-btn" type="button">
             <span class="visually-hidden">Open event</span>
           </button>
         </header>
         <section class="event__details">
-          <section class="event__section  event__section--offers">
-            <h3 class="event__section-title  event__section-title--offers">Offers</h3>
-
-            <div class="event__available-offers">
-              ${offersList}
-            </div>
-          </section>
-
-          <section class="event__section  event__section--destination">
-            <h3 class="event__section-title  event__section-title--destination">Destination</h3>
-            <p class="event__destination-description">${description}</p>
-          </section>
+          ${offersNode}
+          ${descriptionNode}
         </section>
       </form>
     </li>`
   );
 };
 
-export default class EditEventView extends AbstractView {
-  #destinations = null;
-  #offers = null;
+export default class EditEventView extends AbstractStatefulView {
   #event = null;
   #form = null;
   #rollUpBtn = null;
   #handlerFormSubmit = null;
   #handlerFormClose = null;
 
-  constructor({ destinations, offers, event, onFormSubmit, onFormClose }) {
+  constructor({ event, onFormSubmit, onFormClose }) {
     super();
-    this.#destinations = destinations;
-    this.#offers = offers;
     this.#event = event;
     this.#handlerFormSubmit = onFormSubmit;
     this.#handlerFormClose = onFormClose;
+    this._setState(EditEventView.parseEventToState(event));
 
+    this._restoreHandlers();
+  }
+
+  reset(event) {
+    this.updateElement(EditEventView.parseEventToState(event));
+  }
+
+  _restoreHandlers() {
     this.form.addEventListener('submit', this.onFormSubmit);
     this.rollUpBtn.addEventListener('click', this.onRollUpBtnClick);
+    this.element.querySelector('.event__input--destination').addEventListener('input', this.#destinationHandler);
+    this.element.querySelector('.event__type-group').addEventListener('change', this.#typeHandler);
+
+    const offers = this.element.querySelector('.event__available-offers');
+    if (offers) {
+      offers.addEventListener('change', this.#offersHandler);
+    }
   }
 
   get template() {
-    return createEditEventTemplate({ destinations: this.#destinations, offers: this.#offers, event: this.#event });
+    return createEditEventTemplate(this._state);
   }
 
   get form() {
@@ -157,13 +193,57 @@ export default class EditEventView extends AbstractView {
     return this.#rollUpBtn;
   }
 
-  onFormSubmit = (evt) => {
+  static parseEventToState(event) {
+    return {...event,
+      offersList: event.offers.map((offer) => offer),
+      destinationId: event.destination,
+      typeId: event.type,
+    };
+  }
+
+  static parseStateToEvent(state) {
+    const event = {...state};
+    delete event.offersList;
+    delete event.destinationId;
+    delete event.typeId;
+
+    return event;
+  }
+
+  #onFormSubmit = (evt) => {
     evt.preventDefault();
-    this.#handlerFormSubmit();
+    this.#handlerFormSubmit(EditEventView.parseStateToEvent(this._state));
   };
 
-  onRollUpBtnClick = (evt) => {
+  #onRollUpBtnClick = (evt) => {
     evt.preventDefault();
     this.#handlerFormClose();
+  };
+
+  #destinationHandler = (evt) => {
+    evt.preventDefault();
+    const destinationId = getDestinationId(evt.target.value);
+    if (destinationId) {
+      this.updateElement({destination: destinationId});
+    }
+  };
+
+  #typeHandler = (evt) => {
+    evt.preventDefault();
+    this.updateElement({type: evt.target.value, offers: []});
+  };
+
+  #offersHandler = (evt) => {
+    evt.preventDefault();
+    const offerId = evt.target.dataset.offerId;
+    const offers = new Set(this._state.offers);
+
+    if (evt.target.checked) {
+      offers.add(offerId);
+    } else {
+      offers.delete(offerId);
+    }
+
+    this.updateElement({offers: [...offers]});
   };
 }
