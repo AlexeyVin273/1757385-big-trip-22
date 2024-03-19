@@ -41,8 +41,6 @@ export default class EventPresenter {
 
     this.#eventEditComponent = new EditEventView({
       event: this.#event,
-      offers: this.#eventsModel.offers,
-      destinations: this.#eventsModel.destinations,
       onFormSubmit: this.#replaceFormToCard,
       onFormClose: this.#replaceFormToCard,
     });
@@ -71,6 +69,7 @@ export default class EventPresenter {
 
   resetView() {
     this.#replaceFormToCard();
+    this.#eventEditComponent.reset(this.#event);
   }
 
   get mode() {
@@ -80,6 +79,7 @@ export default class EventPresenter {
   #escKeydownHandler = (evt) => {
     if (evt.key === 'Escape' || evt.key === 'Esc') {
       evt.preventDefault();
+      this.#eventEditComponent.reset(this.#event);
       this.#replaceFormToCard();
     }
   };
