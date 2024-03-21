@@ -20,4 +20,8 @@ const getDuration = (dateFrom, dateTo) => {
 
 const getCalendarDateTime = (isoDate) => dayjs(isoDate).format('DD/MM/YY HH:mm');
 
-export { extractISODate, humanizeDate, humanizeTime, getDuration, getCalendarDateTime };
+const convertToISO = (date) => dayjs(date).format('YYYY-MM-DDTHH:mm');
+
+const compareDates = (dateA, dateB) => dayjs(dateA).isBefore(dayjs(dateB));
+
+export { extractISODate, humanizeDate, humanizeTime, getDuration, getCalendarDateTime, convertToISO, compareDates };

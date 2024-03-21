@@ -1,8 +1,11 @@
 import AbstractStatefulView from '../framework/view/abstract-stateful-view';
 import { EventTypes } from '../mock/mockEventTypes';
-import { getCalendarDateTime } from '../utils/common';
+import { getCalendarDateTime, convertToISO, compareDates } from '../utils/common';
 import { getDestinationById, getDestinations, getDestinationId } from '../mock/mockDestination';
 import { getOfferById } from '../mock/mockOffers';
+import flatpickr from 'flatpickr';
+
+import 'flatpickr/dist/flatpickr.min.css';
 
 const createTypesList = (checkedType, eventId) => Object.entries(EventTypes).map(([key, value]) => {
   const { id: typeId, title } = value;
@@ -42,10 +45,10 @@ const createOffersList = (offers, checkedOffers, eventId) => {
 const createDates = (dateFrom, dateTo, eventId) =>
   `<div class="event__field-group  event__field-group--time">
     <label class="visually-hidden" for="event-start-time-${eventId}">From</label>
-    <input class="event__input  event__input--time" id="event-start-time-${eventId}" type="text" name="event-start-time" value="${getCalendarDateTime(dateFrom)}">
+    <input class="event__input  event__input--time" id="event-start-time-${eventId}" type="text" name="event-start-time-${eventId}" value="${getCalendarDateTime(dateFrom)}">
     &mdash;
     <label class="visually-hidden" for="event-end-time-${eventId}">To</label>
-    <input class="event__input  event__input--time" id="event-end-time-${eventId}" type="text" name="event-end-time" value="${getCalendarDateTime(dateTo)}">
+    <input class="event__input  event__input--time" id="event-end-time-${eventId}" type="text" name="event-end-time-${eventId}" value="${getCalendarDateTime(dateTo)}">
   </div>
 `;
 
@@ -80,7 +83,7 @@ const createDescription = ({description, pictures}) => {
 
 const isSubmitDisabled = (data) => {
   const { destination, type, offers, offersList, destinationId, typeId } = data;
-  return destinationId === destination && typeId === type && offersList.length === offers.length && offers.every((value) => offersList.includes(value));
+  return destinationId === destination && typeId === type && offersList.length === offers.length && offers.every((value) => offersList.includes(value)) && data.dateFrom === data.prevDateFrom && data.dateTo === data.prevDateTo;
 };
 
 const createEditEventTemplate = (data) => {
@@ -148,6 +151,8 @@ export default class EditEventView extends AbstractStatefulView {
   #rollUpBtn = null;
   #handlerFormSubmit = null;
   #handlerFormClose = null;
+  #datepickerStart = null;
+  #datepickerEnd = null;
 
   constructor({ event, onFormSubmit, onFormClose }) {
     super();
@@ -157,6 +162,20 @@ export default class EditEventView extends AbstractStatefulView {
     this._setState(EditEventView.parseEventToState(event));
 
     this._restoreHandlers();
+  }
+
+  removeElement() {
+    super.removeElement();
+
+    if (this.#datepickerStart) {
+      this.#datepickerStart.destroy();
+      this.#datepickerStart = null;
+    }
+
+    if (this.#datepickerEnd) {
+      this.#datepickerEnd.destroy();
+      this.#datepickerEnd = null;
+    }
   }
 
   reset(event) {
@@ -173,6 +192,8 @@ export default class EditEventView extends AbstractStatefulView {
     if (offers) {
       offers.addEventListener('change', this.#offersHandler);
     }
+
+    this.#setDatepickers();
   }
 
   get template() {
@@ -198,6 +219,8 @@ export default class EditEventView extends AbstractStatefulView {
       offersList: event.offers.map((offer) => offer),
       destinationId: event.destination,
       typeId: event.type,
+      prevDateFrom: event.dateFrom,
+      prevDateTo: event.dateTo,
     };
   }
 
@@ -206,6 +229,8 @@ export default class EditEventView extends AbstractStatefulView {
     delete event.offersList;
     delete event.destinationId;
     delete event.typeId;
+    delete event.prevDateFrom;
+    delete event.prevDateTo;
 
     return event;
   }
@@ -245,5 +270,42 @@ export default class EditEventView extends AbstractStatefulView {
     }
 
     this.updateElement({offers: [...offers]});
+  };
+
+  #setDatepickers = () => {
+    const dateInputFrom = this.element.querySelector('[id^="event-start-time"]');
+    const dateInputTo = this.element.querySelector('[id^="event-end-time"]');
+
+    if (dateInputFrom) {
+      this.#datepickerStart = flatpickr(dateInputFrom, {
+        enableTime: true,
+        dateFormat: 'd/m/y H:i',
+        onChange: this.#dateStartChangeHandler,
+      });
+    }
+
+    if (dateInputTo) {
+      this.#datepickerEnd = flatpickr(dateInputTo, {
+        enableTime: true,
+        dateFormat: 'd/m/y H:i',
+        onChange: this.#dateEndChangeHandler,
+      });
+    }
+
+    this.#datepickerEnd.set('minDate', this.#datepickerStart.selectedDates[0]);
+  };
+
+  #dateStartChangeHandler = (selectedDates) => {
+    let dateTo = this._state.dateTo;
+    if (compareDates(this.#datepickerEnd.selectedDates[0], selectedDates[0])) {
+      this.#datepickerEnd.setDate(selectedDates[0]);
+      dateTo = convertToISO(selectedDates[0]);
+    }
+    this.#datepickerEnd.set('minDate', selectedDates[0]);
+    this.updateElement({dateFrom: convertToISO(selectedDates[0]), dateTo: dateTo});
+  };
+
+  #dateEndChangeHandler = (selectedDates) => {
+    this.updateElement({dateTo: convertToISO(selectedDates[0])});
   };
 }
