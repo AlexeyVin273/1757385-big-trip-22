@@ -1,6 +1,8 @@
 import EventView from '../view/event-view';
 import EditEventView from '../view/edit-event-view';
 import { remove, render, replace } from '../framework/render';
+import { UserAction, UpdateType } from '../utils/const';
+import { isDatesEqual } from '../utils/common';
 
 const EventMode = {
   DEFAULT: 'DEFAULT',
@@ -41,8 +43,9 @@ export default class EventPresenter {
 
     this.#eventEditComponent = new EditEventView({
       event: this.#event,
-      onFormSubmit: this.#replaceFormToCard,
+      onFormSubmit: this.#handleFormSubmit,
       onFormClose: this.#replaceFormToCard,
+      onDeleteClick: this.#handleDeleteClick,
     });
 
     if (prevEventComponent === null || prevEventEditComponent === null) {
@@ -98,7 +101,23 @@ export default class EventPresenter {
   };
 
   #handleFavouriteClick = () => {
-    this.#handleDataChange({ ...this.#event, isFavorite: !this.#event.isFavorite });
+    this.#handleDataChange(UserAction.UPDATE_EVENT, UpdateType.PATCH, {...this.#event, isFavorite: !this.#event.isFavorite});
+  };
+
+  #handleFormSubmit = (event) => {
+    const isMinorUpdate = isDatesEqual(this.#event.dateFrom, event.dateFrom) &&
+    isDatesEqual(this.#event.dateTo, event.dateTo) &&
+    this.#event.basePrice === event.basePrice;
+
+    this.#handleDataChange(
+      UserAction.UPDATE_EVENT,
+      isMinorUpdate ? UpdateType.MINOR : UpdateType.PATCH,
+      event);
+    this.#replaceFormToCard();
+  };
+
+  #handleDeleteClick = (event) => {
+    this.#handleDataChange(UserAction.DELETE_EVENT, UpdateType.MINOR, event);
   };
 }
 

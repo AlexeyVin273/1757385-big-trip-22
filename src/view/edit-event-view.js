@@ -151,14 +151,16 @@ export default class EditEventView extends AbstractStatefulView {
   #rollUpBtn = null;
   #handlerFormSubmit = null;
   #handlerFormClose = null;
+  #handleDeleteClick = null;
   #datepickerStart = null;
   #datepickerEnd = null;
 
-  constructor({ event, onFormSubmit, onFormClose }) {
+  constructor({ event, onFormSubmit, onFormClose, onDeleteClick }) {
     super();
     this.#event = event;
     this.#handlerFormSubmit = onFormSubmit;
     this.#handlerFormClose = onFormClose;
+    this.#handleDeleteClick = onDeleteClick;
     this._setState(EditEventView.parseEventToState(event));
 
     this._restoreHandlers();
@@ -183,10 +185,11 @@ export default class EditEventView extends AbstractStatefulView {
   }
 
   _restoreHandlers() {
-    this.form.addEventListener('submit', this.onFormSubmit);
-    this.rollUpBtn.addEventListener('click', this.onRollUpBtnClick);
+    this.form.addEventListener('submit', this.#onFormSubmit);
+    this.rollUpBtn.addEventListener('click', this.#onRollUpBtnClick);
     this.element.querySelector('.event__input--destination').addEventListener('input', this.#destinationHandler);
     this.element.querySelector('.event__type-group').addEventListener('change', this.#typeHandler);
+    this.element.querySelector('.event__reset-btn').addEventListener('click', this.#formDeleteClickHandler);
 
     const offers = this.element.querySelector('.event__available-offers');
     if (offers) {
@@ -307,5 +310,10 @@ export default class EditEventView extends AbstractStatefulView {
 
   #dateEndChangeHandler = (selectedDates) => {
     this.updateElement({dateTo: convertToISO(selectedDates[0])});
+  };
+
+  #formDeleteClickHandler = (evt) => {
+    evt.preventDefault();
+    this.#handleDeleteClick(EditEventView.parseStateToEvent(this._state));
   };
 }

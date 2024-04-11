@@ -24,4 +24,6 @@ const convertToISO = (date) => dayjs(date).format('YYYY-MM-DDTHH:mm');
 
 const compareDates = (dateA, dateB) => dayjs(dateA).isBefore(dayjs(dateB));
 
-export { extractISODate, humanizeDate, humanizeTime, getDuration, getCalendarDateTime, convertToISO, compareDates };
+const isDatesEqual = (dateA, dateB) => (dateA === null && dateB === null) || dayjs(dateA).isSame(dayjs(dateB));
+
+export { extractISODate, humanizeDate, humanizeTime, getDuration, getCalendarDateTime, convertToISO, compareDates, isDatesEqual };
