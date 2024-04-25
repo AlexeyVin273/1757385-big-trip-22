@@ -1,45 +1,77 @@
-import FiltersView from '../view/filters-view';
 import SortEventsView from '../view/sort-events-view';
 import EventsListView from '../view/events-list-view';
-import AddEventView from '../view/add-event-view';
 import TripInfoView from '../view/trip-info-view';
 import NoEventsView from '../view/no-events-views';
-import { RenderPosition, render } from '../framework/render';
+import { RenderPosition, remove, render } from '../framework/render';
 import EventPresenter, { EventMode } from './event-presenter';
-import { SortType } from '../utils/const';
-import { sortByDefault, sortByTime, sortByPrice } from '../utils/event';
+import { SortType, FilterType } from '../utils/const';
+import { sortByTime, sortByPrice, sortByDefault } from '../utils/event';
+import { UserAction, UpdateType } from '../utils/const';
+import { filter } from '../utils/filter';
+import NewEventPresenter from './new-event-presenter';
 
 export default class RoutePresenter {
   #container = null;
   #eventsModel = null;
+  #filterModel = null;
   #eventsContainer = null;
-  #filterContainer = null;
   #eventsListView = null;
+  #sortEventsView = null;
+  #noEventsView = null;
   #eventPresenters = new Map();
+  #newEventPresenter = null;
   #currentSortType = SortType.DEFAULT;
-  #defaultSortedEvents = null;
-  #events = null;
+  #filterType = FilterType.EVERYTHING;
 
-  constructor({container, eventsModel}) {
+  constructor({container, eventsModel, filterModel}) {
     this.#container = container;
     this.#eventsModel = eventsModel;
+    this.#filterModel = filterModel;
     this.#eventsContainer = this.#container.querySelector('.trip-events');
-    this.#filterContainer = this.#container.querySelector('.trip-controls__filters');
+
+    this.#eventsModel.addObserver(this.#handleModelEvent);
+    this.#filterModel.addObserver(this.#handleModelEvent);
+
+    this.#newEventPresenter = new NewEventPresenter({
+      container,
+      onAddButtonClick: this.#handleNewEventButtonClick,
+      onDataChange: this.#handleViewAction,
+    });
   }
 
   init() {
-    this.#defaultSortedEvents = this.#eventsModel.events.slice().sort(sortByDefault);
-    this.#events = [...this.#defaultSortedEvents];
-
     this.#render();
+    this.#newEventPresenter.init();
+  }
+
+  get events() {
+    this.#filterType = this.#filterModel.filter;
+    const events = this.#eventsModel.events;
+    const filteredEvents = filter[this.#filterType](events);
+    switch (this.#currentSortType) {
+      case SortType.TIME:
+        return filteredEvents.sort(sortByTime);
+      case SortType.PRICE:
+        return filteredEvents.sort(sortByPrice);
+    }
+
+    return filteredEvents.sort(sortByDefault);
   }
 
   #render() {
     // this.#renderTripInfo();
-    this.#renderFilters();
+    if (this.events.length === 0) {
+      this.#renderNoEvents();
+      return;
+    }
+
     this.#renderSortEvents();
-    this.#renderEventsList();
     this.#renderEvents();
+  }
+
+  #renderNoEvents() {
+    this.#noEventsView = new NoEventsView({filterType: this.#filterType});
+    render(this.#noEventsView, this.#eventsContainer);
   }
 
   #renderTripInfo() {
@@ -47,29 +79,20 @@ export default class RoutePresenter {
     render(new TripInfoView(), tripInfoContainer, RenderPosition.AFTERBEGIN);
   }
 
-  #renderFilters() {
-    const filters = Object.keys(this.#eventsModel.filter);
-    render(new FiltersView({ filters }), this.#filterContainer);
-  }
-
   #renderSortEvents() {
-    render(new SortEventsView({ onSortTypeChanged: this.#handleSortTypeChanged }), this.#eventsContainer);
-  }
-
-  #renderEventsList() {
-    this.#eventsListView = new EventsListView();
-    render(this.#eventsListView, this.#eventsContainer);
+    this.#sortEventsView = new SortEventsView({
+      currentSortType: this.#currentSortType,
+      onSortTypeChanged: this.#handleSortTypeChanged });
+    render(this.#sortEventsView, this.#eventsContainer);
   }
 
   #renderEvents() {
-    if (this.#events.length === 0) {
-      render(new NoEventsView(), this.#eventsContainer);
-      return;
+    if (!this.#eventsListView) {
+      this.#eventsListView = new EventsListView();
+      render(this.#eventsListView, this.#eventsContainer);
     }
 
-    this.#eventsListView = this.#eventsListView ?? new EventsListView();
-
-    for(const event of this.#events) {
+    for(const event of this.events) {
       this.#renderEvent(event);
     }
   }
@@ -78,7 +101,7 @@ export default class RoutePresenter {
     const eventPresenter = new EventPresenter({
       parentContainer: this.#eventsListView,
       model: this.#eventsModel,
-      onDataChange: this.#handleEventChange,
+      onDataChange: this.#handleViewAction,
       onModeChange: this.#handleEventModeChange,
     });
 
@@ -86,13 +109,24 @@ export default class RoutePresenter {
     this.#eventPresenters.set(event.id, eventPresenter);
   }
 
-  #renderAddEvent(offers, destinations, container) {
-    render(new AddEventView({ destinations, offers }), container);
-  }
-
-  #clearEventsList() {
+  #clear({resetSortType = false} = {}) {
     this.#eventPresenters.forEach((presenter) => presenter.destroy());
     this.#eventPresenters.clear();
+
+    remove(this.#eventsListView);
+    remove(this.#sortEventsView);
+
+    this.#eventsListView = null;
+    this.#sortEventsView = null;
+
+    if (this.#noEventsView) {
+      remove(this.#noEventsView);
+      this.#noEventsView = null;
+    }
+
+    if (resetSortType) {
+      this.#currentSortType = SortType.DEFAULT;
+    }
   }
 
   #handleEventChange = (updatedEvent) => {
@@ -109,19 +143,48 @@ export default class RoutePresenter {
       return;
     }
 
-    switch (sortType) {
-      case SortType.TIME:
-        this.#events.sort(sortByTime);
-        break;
-      case SortType.PRICE:
-        this.#events.sort(sortByPrice);
-        break;
-      default:
-        this.#events = [...this.#defaultSortedEvents];
-    }
-
     this.#currentSortType = sortType;
-    this.#clearEventsList();
-    this.#renderEvents();
+    this.#clear();
+    this.#render();
+  };
+
+  #handleViewAction = (actionType, updateType, update) => {
+    switch (actionType) {
+      case UserAction.UPDATE_EVENT:
+        this.#eventsModel.updateEvent(update, updateType);
+        break;
+      case UserAction.ADD_EVENT:
+        this.#eventsModel.addEvent(update, updateType);
+        break;
+      case UserAction.DELETE_EVENT:
+        this.#eventsModel.deleteEvent(update, updateType);
+        break;
+    }
+  };
+
+  #handleModelEvent = (updateType, data) => {
+    switch (updateType) {
+      case UpdateType.PATCH:
+        this.#eventPresenters.get(data.id).init(data);
+        break;
+      case UpdateType.MINOR:
+        this.#clear();
+        this.#render();
+        break;
+      case UpdateType.MAJOR:
+        this.#clear({resetSortType: true});
+        this.#render();
+        break;
+    }
+  };
+
+  #handleNewEventButtonClick = () => {
+    this.#currentSortType = SortType.DEFAULT;
+    this.#filterModel.setFilter(UpdateType.MAJOR, FilterType.EVERYTHING);
+
+    if (!this.#eventsListView) {
+      this.#eventsListView = new EventsListView();
+      render(this.#eventsListView, this.#eventsContainer);
+    }
   };
 }
