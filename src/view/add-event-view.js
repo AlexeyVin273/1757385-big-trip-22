@@ -1,6 +1,9 @@
-import AbstractView from '../framework/view/abstract-view';
+import AbstractStatefulView from '../framework/view/abstract-stateful-view';
 import { EventTypes } from '../mock/mockEventTypes';
-import { getCalendarDateTime } from '../utils/common';
+import { getCalendarDateTime, convertToISO, compareDates } from '../utils/common';
+import { getDestinationById, getDestinations, getDestinationId } from '../mock/mockDestination';
+import { getOfferById } from '../mock/mockOffers';
+import flatpickr from 'flatpickr';
 
 const DEFAULT_TYPE_NAME = 'flight';
 
@@ -131,7 +134,7 @@ const createAddEventTemplate = ({ destinations, offers }) => {
   );
 };
 
-export default class AddEventView extends AbstractView {
+export default class AddEventView extends AbstractStatefulViewView {
   #destinations = null;
   #offers = null;
 
