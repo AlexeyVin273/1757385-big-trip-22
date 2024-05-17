@@ -35,7 +35,7 @@ export default class EventPresenter {
 
     this.#eventComponent = new EventView({
       event: this.#event,
-      offers: this.#eventsModel.getOffersByIds(this.#event.offers),
+      offers: this.#eventsModel.getOffersForEvent(this.#event),
       destination: this.#eventsModel.getDestinationById(this.#event.destination),
       onRollUpBtnClick: this.#replaceCardToForm,
       onFavoriteClick: this.#handleFavouriteClick,
@@ -43,6 +43,8 @@ export default class EventPresenter {
 
     this.#eventEditComponent = new EditEventView({
       event: this.#event,
+      offers: this.#eventsModel.offers,
+      destinations: this.#eventsModel.destinations,
       onFormSubmit: this.#handleFormSubmit,
       onFormClose: this.#replaceFormToCard,
       onDeleteClick: this.#handleDeleteClick,
