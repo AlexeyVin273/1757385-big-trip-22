@@ -1,20 +1,18 @@
 import AbstractStatefulView from '../framework/view/abstract-stateful-view';
-import { EventTypes } from '../mock/mockEventTypes';
+import { TypesViewData } from '../utils/const';
 import { getCalendarDateTime, convertToISO, compareDates } from '../utils/common';
-import { getDestinationById, getDestinations, getDestinationId } from '../mock/mockDestination';
-import { getOfferById } from '../mock/mockOffers';
 import flatpickr from 'flatpickr';
 import he from 'he';
 
 import 'flatpickr/dist/flatpickr.min.css';
 
-const createTypesList = (checkedType, eventId) => Object.entries(EventTypes).map(([key, value]) => {
-  const { id: typeId, title } = value;
+const createTypesList = (checkedType, eventId) => Object.entries(TypesViewData).map(([key, value]) => {
+  const { title } = value;
   const checked = key === checkedType ? 'checked' : '';
   return (`
     <div class="event__type-item">
-      <input id="event-type-${typeId}-${eventId}" class="event__type-input  visually-hidden" type="radio" name="event-type-${eventId}" value="${key}" ${checked}>
-      <label class="event__type-label event__type-label--${key}" for="event-type-${typeId}-${eventId}">${title}</label>
+      <input id="event-type-${key}-${eventId}" class="event__type-input  visually-hidden" type="radio" name="event-type-${eventId}" value="${key}" ${checked}>
+      <label class="event__type-label event__type-label--${key}" for="event-type-${key}-${eventId}">${title}</label>
     </div>`);
 }).join('');
 
@@ -98,17 +96,16 @@ const createControls = (data) => {
   );
 };
 
-const createEditEventTemplate = (data) => {
+const createEditEventTemplate = ({data, offers, destinations}) => {
   const { id: eventId, type: eventType, dateFrom, dateTo, basePrice, offers: eventOffers } = data;
-  const { icon: typeIcon, title: typeTitle, offers: offersIds } = EventTypes[eventType] ?? {};
-  const { name: destinationName, description, pictures } = getDestinationById(data.destination) || {};
-  const offers = offersIds.map((offerId) => getOfferById(offerId));
-  const destinations = getDestinations();
+  const { icon: typeIcon, title: typeTitle } = TypesViewData[eventType] ?? {};
+  const { name: destinationName, description, pictures } = destinations.find((destination) => destination.id === data.destination) ?? {};
+  const typeOffers = offers.find((offer) => offer.type === eventType)?.offers ?? [];
 
   const typesList = createTypesList(eventType, eventId);
   const destinationsNode = createDestinations(destinations, destinationName, typeTitle, eventId);
   const dates = createDates(dateFrom, dateTo, eventId);
-  const offersNode = createOffersList(offers, new Set(eventOffers), eventId);
+  const offersNode = createOffersList(typeOffers, new Set(eventOffers), eventId);
   const descriptionNode = createDescription({description, pictures});
   const controls = createControls(data);
 
@@ -156,6 +153,8 @@ const createEditEventTemplate = (data) => {
 
 export default class EditEventView extends AbstractStatefulView {
   #event = null;
+  #offers = null;
+  #destinations = null;
   #form = null;
   #rollUpBtn = null;
   #handlerFormSubmit = null;
@@ -164,9 +163,11 @@ export default class EditEventView extends AbstractStatefulView {
   #datepickerStart = null;
   #datepickerEnd = null;
 
-  constructor({ event, onFormSubmit, onFormClose, onDeleteClick }) {
+  constructor({ event, offers, destinations, onFormSubmit, onFormClose, onDeleteClick }) {
     super();
     this.#event = event;
+    this.#offers = offers;
+    this.#destinations = destinations;
     this.#handlerFormSubmit = onFormSubmit;
     this.#handlerFormClose = onFormClose;
     this.#handleDeleteClick = onDeleteClick;
@@ -211,7 +212,7 @@ export default class EditEventView extends AbstractStatefulView {
   }
 
   get template() {
-    return createEditEventTemplate(this._state);
+    return createEditEventTemplate({data: this._state, offers: this.#offers, destinations: this.#destinations});
   }
 
   get form() {
@@ -263,7 +264,7 @@ export default class EditEventView extends AbstractStatefulView {
 
   #destinationHandler = (evt) => {
     evt.preventDefault();
-    const destinationId = getDestinationId(evt.target.value);
+    const destinationId = this.#destinations.find((destination) => destination.name === evt.target.value)?.id;
     if (destinationId) {
       this.updateElement({destination: destinationId});
     }

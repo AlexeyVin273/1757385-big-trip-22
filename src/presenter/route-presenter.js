@@ -2,6 +2,7 @@ import SortEventsView from '../view/sort-events-view';
 import EventsListView from '../view/events-list-view';
 import TripInfoView from '../view/trip-info-view';
 import NoEventsView from '../view/no-events-views';
+import LoadingView from '../view/loading-view';
 import { RenderPosition, remove, render } from '../framework/render';
 import EventPresenter, { EventMode } from './event-presenter';
 import { SortType, FilterType } from '../utils/const';
@@ -18,10 +19,12 @@ export default class RoutePresenter {
   #eventsListView = null;
   #sortEventsView = null;
   #noEventsView = null;
+  #loadingView = new LoadingView();
   #eventPresenters = new Map();
   #newEventPresenter = null;
   #currentSortType = SortType.DEFAULT;
   #filterType = FilterType.EVERYTHING;
+  #isLoading = true;
 
   constructor({container, eventsModel, filterModel}) {
     this.#container = container;
@@ -41,6 +44,9 @@ export default class RoutePresenter {
 
   init() {
     this.#render();
+  }
+
+  initNewEventPresenter() {
     this.#newEventPresenter.init();
   }
 
@@ -60,6 +66,12 @@ export default class RoutePresenter {
 
   #render() {
     // this.#renderTripInfo();
+
+    if (this.#isLoading) {
+      this.#renderLoading();
+      return;
+    }
+
     if (this.events.length === 0) {
       this.#renderNoEvents();
       return;
@@ -77,6 +89,10 @@ export default class RoutePresenter {
   #renderTripInfo() {
     const tripInfoContainer = this.#container.querySelector('.trip-main');
     render(new TripInfoView(), tripInfoContainer, RenderPosition.AFTERBEGIN);
+  }
+
+  #renderLoading() {
+    render(this.#loadingView, this.#eventsContainer);
   }
 
   #renderSortEvents() {
@@ -115,6 +131,7 @@ export default class RoutePresenter {
 
     remove(this.#eventsListView);
     remove(this.#sortEventsView);
+    remove(this.#loadingView);
 
     this.#eventsListView = null;
     this.#sortEventsView = null;
@@ -173,6 +190,11 @@ export default class RoutePresenter {
         break;
       case UpdateType.MAJOR:
         this.#clear({resetSortType: true});
+        this.#render();
+        break;
+      case UpdateType.INIT:
+        this.#isLoading = false;
+        remove(this.#loadingView);
         this.#render();
         break;
     }

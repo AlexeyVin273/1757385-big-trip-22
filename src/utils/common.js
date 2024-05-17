@@ -14,7 +14,7 @@ const getDuration = (dateFrom, dateTo) => {
   const diff = dayjs.duration(to.diff(from));
   const diffArray = [[diff.days(), 'D'], [diff.hours(), 'H'], [diff.minutes(), 'M']]
     .map((item) => (item[0] < 10 ? `0${item[0]}` : item[0]) + item[1])
-    .filter((item, index, array) => item !== '00D' && (item !== '00H' && array[0] === '00D'));
+    .filter((item) => item !== '00D' && item !== '00H');
   return diffArray.join(' ');
 };
 

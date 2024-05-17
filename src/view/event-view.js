@@ -1,6 +1,6 @@
 import AbstractView from '../framework/view/abstract-view';
-import { EventTypes } from '../mock/mockEventTypes';
 import { extractISODate, humanizeDate, humanizeTime, getDuration } from '../utils/common';
+import { TypesViewData } from '../utils/const';
 import he from 'he';
 
 const createSchedule = (dateFrom, dateTo) =>
@@ -29,7 +29,7 @@ const createOffersList = (offers) =>
 const createEventTemplate = ({ event, offers, destination }) => {
   const { type, dateFrom, dateTo, basePrice, isFavorite } = event;
 
-  const { icon: eventIcon, title: typeTitle } = EventTypes[type] ?? {};
+  const { icon: eventIcon, title: typeTitle } = TypesViewData[type] ?? {};
   const eventTitle = `${typeTitle} ${he.encode(destination?.name ?? '')}`;
 
   const offersList = createOffersList(offers);
