@@ -37,6 +37,7 @@ export default class RoutePresenter {
 
     this.#newEventPresenter = new NewEventPresenter({
       container,
+      eventModel: this.#eventsModel,
       onAddButtonClick: this.#handleNewEventButtonClick,
       onDataChange: this.#handleViewAction,
     });

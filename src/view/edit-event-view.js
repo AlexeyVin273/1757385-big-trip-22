@@ -1,6 +1,6 @@
 import AbstractStatefulView from '../framework/view/abstract-stateful-view';
 import { TypesViewData } from '../utils/const';
-import { getCalendarDateTime, convertToISO, compareDates } from '../utils/common';
+import { getCalendarDateTime, compareDates, isDatesEqual } from '../utils/common';
 import flatpickr from 'flatpickr';
 import he from 'he';
 
@@ -64,12 +64,12 @@ const createDestinations = (destinations, chosenDestination, chosenTypeTitle, ev
 
 const createDescription = ({description, pictures}) => {
   const picturesList = pictures.map((picture) => `<img class="event__photo" src="${picture.src}" alt="${picture.description}">`).join('');
-  const picturesNode = picturesList.length && `
+  const picturesNode = picturesList.length ? `
     <div class="event__photos-container">
       <div class="event__photos-tape">
         ${picturesList}
       </div>
-    </div>`;
+    </div>` : '';
 
   return (
     `<section class="event__section  event__section--destination">
@@ -82,7 +82,7 @@ const createDescription = ({description, pictures}) => {
 
 const isSubmitDisabled = (data) => {
   const { destination, type, offers, offersList, destinationId, typeId } = data;
-  return destinationId === destination && typeId === type && offersList.length === offers.length && offers.every((value) => offersList.includes(value)) && data.dateFrom === data.prevDateFrom && data.dateTo === data.prevDateTo && data.basePrice === data.prevPrice;
+  return destinationId === destination && typeId === type && offersList.length === offers.length && offers.every((value) => offersList.includes(value)) && data.dateFrom === data.prevDateFrom && data.dateTo === data.prevDateTo && data.basePrice === data.prevPrice || data.basePrice === 0 || isDatesEqual(data.dateFrom, data.dateTo);
 };
 
 const createControls = (data) => {
@@ -99,7 +99,7 @@ const createControls = (data) => {
 const createEditEventTemplate = ({data, offers, destinations}) => {
   const { id: eventId, type: eventType, dateFrom, dateTo, basePrice, offers: eventOffers } = data;
   const { icon: typeIcon, title: typeTitle } = TypesViewData[eventType] ?? {};
-  const { name: destinationName, description, pictures } = destinations.find((destination) => destination.id === data.destination) ?? {};
+  const { name: destinationName = '', description = '', pictures = [] } = destinations.find((destination) => destination.id === data.destination) ?? {};
   const typeOffers = offers.find((offer) => offer.type === eventType)?.offers ?? [];
 
   const typesList = createTypesList(eventType, eventId);
@@ -223,9 +223,7 @@ export default class EditEventView extends AbstractStatefulView {
   }
 
   get rollUpBtn() {
-    if (!this.#rollUpBtn) {
-      this.#rollUpBtn = this.element.querySelector('.event__rollup-btn');
-    }
+    this.#rollUpBtn = this.element.querySelector('.event__rollup-btn');
     return this.#rollUpBtn;
   }
 
@@ -320,10 +318,10 @@ export default class EditEventView extends AbstractStatefulView {
     let dateTo = this._state.dateTo;
     if (compareDates(this.#datepickerEnd.selectedDates[0], selectedDates[0])) {
       this.#datepickerEnd.setDate(selectedDates[0]);
-      dateTo = convertToISO(selectedDates[0]);
+      dateTo = selectedDates[0];
     }
     this.#datepickerEnd.set('minDate', selectedDates[0]);
-    this.updateElement({dateFrom: convertToISO(selectedDates[0]), dateTo: dateTo});
+    this.updateElement({dateFrom: selectedDates[0], dateTo: dateTo});
   };
 
   #priceChangeHandler = (evt) => {
@@ -332,7 +330,7 @@ export default class EditEventView extends AbstractStatefulView {
   };
 
   #dateEndChangeHandler = (selectedDates) => {
-    this.updateElement({dateTo: convertToISO(selectedDates[0])});
+    this.updateElement({dateTo: selectedDates[0]});
   };
 
   #formDeleteClickHandler = (evt) => {

@@ -73,8 +73,8 @@ export default class EventPresenter {
   }
 
   resetView() {
-    this.#replaceFormToCard();
     this.#eventEditComponent.reset(this.#event);
+    this.#replaceFormToCard();
   }
 
   get mode() {

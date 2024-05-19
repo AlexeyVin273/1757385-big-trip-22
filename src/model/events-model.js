@@ -17,6 +17,7 @@ export default class EventsModel extends Observable {
     try {
       const events = await this.#routeApiService.events;
       this.#events = events.map(EventAdapter.toClient);
+      console.debug('events', events);
     } catch (err) {
       this.#events = [];
       // eslint-disable-next-line no-console
@@ -89,20 +90,36 @@ export default class EventsModel extends Observable {
     }
   }
 
-  addEvent(event, updateType) {
-    this.#events = [event, ...this.#events];
-    this._notify(updateType, event);
+  async addEvent(event, updateType) {
+    try {
+      const response = await this.#routeApiService.addEvent(event);
+      const newEvent = EventAdapter.toClient(response);
+      this.#events = [newEvent, ...this.#events];
+      this._notify(updateType, event);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      throw new Error(`Can't add event: ${err}`);
+    }
   }
 
-  deleteEvent(event, updateType) {
+  async deleteEvent(event, updateType) {
     const index = this.#events.findIndex((item) => item.id === event.id);
 
     if (index === -1) {
       throw new Error('Can\'t delete unexisting event');
     }
 
-    this.#events = [...this.#events.slice(0, index), ...this.#events.slice(index + 1)];
-    this._notify(updateType);
+    try {
+      await this.#routeApiService.deleteEvent(event);
+      this.#events = [
+        ...this.#events.slice(0, index),
+        ...this.#events.slice(index + 1)
+      ];
+      this._notify(updateType);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      throw new Error(`Can't delete event: ${err}`);
+    }
   }
 
 }
