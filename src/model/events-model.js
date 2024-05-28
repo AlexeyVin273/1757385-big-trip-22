@@ -17,7 +17,6 @@ export default class EventsModel extends Observable {
     try {
       const events = await this.#routeApiService.events;
       this.#events = events.map(EventAdapter.toClient);
-      console.debug('events', events);
     } catch (err) {
       this.#events = [];
       // eslint-disable-next-line no-console

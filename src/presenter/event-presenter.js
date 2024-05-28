@@ -60,7 +60,8 @@ export default class EventPresenter {
     }
 
     if (this.#mode === EventMode.EDITING) {
-      replace(this.#eventEditComponent, prevEventEditComponent);
+      replace(this.#eventComponent, prevEventEditComponent);
+      this.#mode = EventMode.DEFAULT;
     }
 
     remove(prevEventComponent);
@@ -75,6 +76,41 @@ export default class EventPresenter {
   resetView() {
     this.#eventEditComponent.reset(this.#event);
     this.#replaceFormToCard();
+  }
+
+  setSaving() {
+    if (this.#mode === EventMode.EDITING) {
+      this.#eventEditComponent.updateElement({
+        isDisabled: true,
+        isSaving: true,
+      });
+    }
+  }
+
+  setDeleting() {
+    if (this.#mode === EventMode.EDITING) {
+      this.#eventEditComponent.updateElement({
+        isDisabled: true,
+        isDeleting: true,
+      });
+    }
+  }
+
+  setAborting() {
+    if (this.#mode === EventMode.DEFAULT) {
+      this.#eventComponent.shake();
+      return;
+    }
+
+    const resetFormState = () => {
+      this.#eventEditComponent.updateElement({
+        isDisabled: false,
+        isSaving: false,
+        isDeleting: false,
+      });
+    };
+
+    this.#eventEditComponent.shake(resetFormState);
   }
 
   get mode() {
@@ -107,15 +143,14 @@ export default class EventPresenter {
   };
 
   #handleFormSubmit = (event) => {
-    const isMinorUpdate = isDatesEqual(this.#event.dateFrom, event.dateFrom) &&
+    const isPatchUpdate = isDatesEqual(this.#event.dateFrom, event.dateFrom) &&
     isDatesEqual(this.#event.dateTo, event.dateTo) &&
     this.#event.basePrice === event.basePrice;
 
     this.#handleDataChange(
       UserAction.UPDATE_EVENT,
-      isMinorUpdate ? UpdateType.MINOR : UpdateType.PATCH,
+      isPatchUpdate ? UpdateType.PATCH : UpdateType.MINOR,
       event);
-    this.#replaceFormToCard();
   };
 
   #handleDeleteClick = (event) => {

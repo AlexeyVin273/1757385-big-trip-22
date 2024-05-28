@@ -62,6 +62,25 @@ export default class NewEventPresenter {
     this.#newEventButtonView.element.disabled = false;
   }
 
+  setSaving() {
+    this.#newEventAddView.updateElement({
+      isDisabled: true,
+      isSaving: true
+    });
+  }
+
+  setAborting() {
+    const resetFormState = () => {
+      this.#newEventAddView.updateElement({
+        isDisabled: false,
+        isSaving: false,
+        isDeleting: false,
+      });
+    };
+
+    this.#newEventAddView.shake(resetFormState);
+  }
+
   #escKeyDownHandler = (evt) => {
     if (evt.key === 'Escape' || evt.key === 'Esc') {
       evt.preventDefault();
@@ -82,7 +101,7 @@ export default class NewEventPresenter {
       event
     );
 
-    this.destroy();
+    // this.destroy();
   };
 
   #handleDeleteClick = () => {
