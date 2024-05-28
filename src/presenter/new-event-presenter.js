@@ -2,7 +2,6 @@ import { RenderPosition, remove, render } from '../framework/render.js';
 import EditEventView from '../view/edit-event-view.js';
 import AddButtonView from '../view/add-button-view.js';
 import { UserAction, UpdateType } from '../utils/const.js';
-import { nanoid } from 'nanoid';
 
 export default class NewEventPresenter {
   #newEventButtonView = null;
@@ -11,10 +10,12 @@ export default class NewEventPresenter {
   #container = null;
   #addButtonClickHandler = null;
   #handleDataChange = null;
+  #eventModel = null;
 
-  constructor({container, onAddButtonClick, onDataChange}) {
+  constructor({container, eventModel, onAddButtonClick, onDataChange}) {
     this.#addButtonContainer = container.querySelector('.trip-main');
     this.#container = container;
+    this.#eventModel = eventModel;
     this.#addButtonClickHandler = onAddButtonClick;
     this.#handleDataChange = onDataChange;
   }
@@ -40,6 +41,8 @@ export default class NewEventPresenter {
 
     this.#newEventAddView = new EditEventView({
       event: this.#createNewEvent(),
+      offers: this.#eventModel.offers,
+      destinations: this.#eventModel.destinations,
       onFormSubmit: this.#handleFormSubmit,
       onFormClose: this.#handleDeleteClick,
       onDeleteClick: this.#handleDeleteClick
@@ -59,6 +62,25 @@ export default class NewEventPresenter {
     this.#newEventButtonView.element.disabled = false;
   }
 
+  setSaving() {
+    this.#newEventAddView.updateElement({
+      isDisabled: true,
+      isSaving: true
+    });
+  }
+
+  setAborting() {
+    const resetFormState = () => {
+      this.#newEventAddView.updateElement({
+        isDisabled: false,
+        isSaving: false,
+        isDeleting: false,
+      });
+    };
+
+    this.#newEventAddView.shake(resetFormState);
+  }
+
   #escKeyDownHandler = (evt) => {
     if (evt.key === 'Escape' || evt.key === 'Esc') {
       evt.preventDefault();
@@ -76,10 +98,10 @@ export default class NewEventPresenter {
     this.#handleDataChange(
       UserAction.ADD_EVENT,
       UpdateType.MINOR,
-      {id: nanoid(), ...event}
+      event
     );
 
-    this.destroy();
+    // this.destroy();
   };
 
   #handleDeleteClick = () => {
