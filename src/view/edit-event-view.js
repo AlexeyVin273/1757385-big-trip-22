@@ -281,13 +281,16 @@ export default class EditEventView extends AbstractStatefulView {
     const destinationId = this.#destinations.find((destination) => destination.name === evt.target.value)?.id;
     if (destinationId) {
       this.updateElement({destination: destinationId});
+    } else {
+      evt.target.setCustomValidity('Please, choose a destination from the list');
+      evt.target.reportValidity();
+      evt.target.value = '';
     }
   };
 
   #typeHandler = (evt) => {
     evt.preventDefault();
     this.updateElement({type: evt.target.value, offers: []});
-    // this._setState({type: evt.target.value, offers: []});
   };
 
   #offersHandler = (evt) => {

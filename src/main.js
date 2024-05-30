@@ -17,9 +17,9 @@ const filterModel = new FilterModel();
 const routePresenter = new RoutePresenter({container, eventsModel, filterModel});
 const filterPresenter = new FilterPresenter({container: filtersContainer, filterModel, eventsModel});
 
-filterPresenter.init();
 routePresenter.init();
 eventsModel.init()
   .finally(() => {
+    filterPresenter.init();
     routePresenter.initNewEventPresenter();
   });

@@ -2,12 +2,14 @@ import { FilterType } from '../utils/const';
 import { render, replace, remove } from '../framework/render';
 import FiltersView from '../view/filters-view';
 import { UpdateType } from '../utils/const';
+import { filter } from '../utils/filter';
 
 export default class FilterPresenter {
   #filtersContainer = null;
   #filterModel = null;
   #eventsModel = null;
   #filterView = null;
+  #filtersStates = new Map();
 
   constructor({container, filterModel, eventsModel}) {
     this.#filtersContainer = container;
@@ -21,9 +23,14 @@ export default class FilterPresenter {
   init() {
     const prevFilterView = this.#filterView;
 
+    for (const filterType of Object.values(FilterType)) {
+      this.#filtersStates.set(filterType, filter[filterType](this.#eventsModel.events).length !== 0);
+    }
+
     this.#filterView = new FiltersView({
       filters: Object.values(FilterType),
       currentFilter: this.#filterModel.filter,
+      filterStates: this.#filtersStates,
       onFilterTypeChange: this.#handleFilterTypeChange,
     });
 

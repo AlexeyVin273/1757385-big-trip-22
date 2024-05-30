@@ -10,14 +10,16 @@ export default class NewEventPresenter {
   #container = null;
   #addButtonClickHandler = null;
   #handleDataChange = null;
+  #handleCanceled = null;
   #eventModel = null;
 
-  constructor({container, eventModel, onAddButtonClick, onDataChange}) {
+  constructor({container, eventModel, onAddButtonClick, onDataChange, onCanceled}) {
     this.#addButtonContainer = container.querySelector('.trip-main');
     this.#container = container;
     this.#eventModel = eventModel;
     this.#addButtonClickHandler = onAddButtonClick;
     this.#handleDataChange = onDataChange;
+    this.#handleCanceled = onCanceled;
   }
 
   init() {
@@ -100,12 +102,11 @@ export default class NewEventPresenter {
       UpdateType.MINOR,
       event
     );
-
-    // this.destroy();
   };
 
   #handleDeleteClick = () => {
     this.destroy();
+    this.#handleCanceled();
   };
 
   #createNewEvent() {
