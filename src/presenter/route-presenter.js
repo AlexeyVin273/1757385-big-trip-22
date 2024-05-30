@@ -1,8 +1,7 @@
-import { RenderPosition, remove, render } from '../framework/render';
+import { remove, render } from '../framework/render';
 import UiBlocker from '../framework/ui-blocker/ui-blocker';
 import SortEventsView from '../view/sort-events-view';
 import EventsListView from '../view/events-list-view';
-import TripInfoView from '../view/trip-info-view';
 import NoEventsView from '../view/no-events-views';
 import LoadingView from '../view/loading-view';
 import EventPresenter, { EventMode } from './event-presenter';
@@ -11,6 +10,7 @@ import { sortByTime, sortByPrice, sortByDefault } from '../utils/event';
 import { UserAction, UpdateType } from '../utils/const';
 import { filter } from '../utils/filter';
 import NewEventPresenter from './new-event-presenter';
+import TripInfoPresenter from './trip-info-presenter';
 
 const TimeLimit = {
   LOWER_LIMIT: 350,
@@ -28,6 +28,7 @@ export default class RoutePresenter {
   #loadingView = new LoadingView();
   #eventPresenters = new Map();
   #newEventPresenter = null;
+  #tripInfoPresenter = null;
   #currentSortType = SortType.DEFAULT;
   #filterType = FilterType.EVERYTHING;
   #isLoading = true;
@@ -50,6 +51,12 @@ export default class RoutePresenter {
       eventModel: this.#eventsModel,
       onAddButtonClick: this.#handleNewEventButtonClick,
       onDataChange: this.#handleViewAction,
+      onCanceled: this.#handleAddEventCancled,
+    });
+
+    this.#tripInfoPresenter = new TripInfoPresenter({
+      container,
+      eventsModel: this.#eventsModel,
     });
   }
 
@@ -76,8 +83,6 @@ export default class RoutePresenter {
   }
 
   #render() {
-    // this.#renderTripInfo();
-
     if (this.#isLoading) {
       this.#renderLoading();
       return;
@@ -88,6 +93,7 @@ export default class RoutePresenter {
       return;
     }
 
+    this.#tripInfoPresenter.init();
     this.#renderSortEvents();
     this.#renderEvents();
   }
@@ -95,11 +101,6 @@ export default class RoutePresenter {
   #renderNoEvents() {
     this.#noEventsView = new NoEventsView({filterType: this.#filterType});
     render(this.#noEventsView, this.#eventsContainer);
-  }
-
-  #renderTripInfo() {
-    const tripInfoContainer = this.#container.querySelector('.trip-main');
-    render(new TripInfoView(), tripInfoContainer, RenderPosition.AFTERBEGIN);
   }
 
   #renderLoading() {
@@ -139,6 +140,7 @@ export default class RoutePresenter {
   #clear({resetSortType = false} = {}) {
     this.#eventPresenters.forEach((presenter) => presenter.destroy());
     this.#eventPresenters.clear();
+    this.#newEventPresenter.destroy();
 
     remove(this.#eventsListView);
     remove(this.#sortEventsView);
@@ -213,6 +215,7 @@ export default class RoutePresenter {
     switch (updateType) {
       case UpdateType.PATCH:
         this.#eventPresenters.get(data.id).init(data);
+        this.#tripInfoPresenter.init();
         break;
       case UpdateType.MINOR:
         this.#clear();
@@ -235,8 +238,14 @@ export default class RoutePresenter {
     this.#filterModel.setFilter(UpdateType.MAJOR, FilterType.EVERYTHING);
 
     if (!this.#eventsListView) {
+      this.#clear();
       this.#eventsListView = new EventsListView();
       render(this.#eventsListView, this.#eventsContainer);
     }
+  };
+
+  #handleAddEventCancled = () => {
+    this.#clear();
+    this.#render();
   };
 }
