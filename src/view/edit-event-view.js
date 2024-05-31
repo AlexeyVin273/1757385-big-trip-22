@@ -63,6 +63,10 @@ const createDestinations = (destinations, chosenDestination, chosenTypeTitle, ev
   </div>`;
 
 const createDescription = ({description, pictures}) => {
+  if (!description && !pictures.length) {
+    return '';
+  }
+
   const picturesList = pictures.map((picture) => `<img class="event__photo" src="${picture.src}" alt="${picture.description}">`).join('');
   const picturesNode = picturesList.length ? `
     <div class="event__photos-container">
@@ -207,7 +211,7 @@ export default class EditEventView extends AbstractStatefulView {
   _restoreHandlers() {
     this.element.querySelector('.event__save-btn').addEventListener('click', this.#onFormSubmit);
     this.rollUpBtn.addEventListener('click', this.#onRollUpBtnClick);
-    this.element.querySelector('.event__input--destination').addEventListener('input', this.#destinationHandler);
+    this.element.querySelector('.event__input--destination').addEventListener('blur', this.#destinationHandler);
     this.element.querySelector('.event__type-group').addEventListener('change', this.#typeHandler);
     this.element.querySelector('.event__reset-btn').addEventListener('click', this.#formDeleteClickHandler);
     this.element.querySelector('.event__input--price').addEventListener('blur', this.#priceChangeHandler);
@@ -278,13 +282,11 @@ export default class EditEventView extends AbstractStatefulView {
 
   #destinationHandler = (evt) => {
     evt.preventDefault();
-    const destinationId = this.#destinations.find((destination) => destination.name === evt.target.value)?.id;
+    const destinationId = this.#destinations.find((destination) => destination.name.includes(evt.target.value))?.id;
     if (destinationId) {
       this.updateElement({destination: destinationId});
     } else {
-      evt.target.setCustomValidity('Please, choose a destination from the list');
-      evt.target.reportValidity();
-      evt.target.value = '';
+      evt.target.value = this.#destinations.length ? this.#destinations[0].name : '';
     }
   };
 
